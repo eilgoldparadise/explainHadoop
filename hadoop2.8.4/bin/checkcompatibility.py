@@ -313,33 +313,91 @@ def checkout_java_acc(force):
   Check out the Java API Compliance Checker. If 'force' is true, will
   re-download even if the directory exists.
   """
+  #检查Java API符合性检查程序。如果“强制”是真的，即使目录存在，也会重新下载。
   acc_dir = get_java_acc_dir()
+  
   if os.path.exists(acc_dir):
     logging.info("Java ACC is already downloaded.")
+    #输出 已经下载了Java ACC。
     if not force:
+    
       return
     logging.info("Forcing re-download.")
+    #输出 强制重新下载。
     shutil.rmtree(acc_dir)
-
+#shutil.rmtree() #递归地删除文件
   logging.info("Downloading Java ACC...")
-
+#下载Java ACC
   url = "https://github.com/lvc/japi-compliance-checker/archive/1.8.tar.gz"
+  
   scratch_dir = get_scratch_dir()
+  #调用函数
   path = os.path.join(scratch_dir, os.path.basename(url))
+  #上面有解释
   jacc = urllib2.urlopen(url)
+#
+#urllib2是一个标准库，安装python之后就自带了，并且只在于python2中
+#在python3中，已经把urllib，urllib2等的合并为一个包urllib了。
+#Urllib2是用于获取URLs(统一资源定位符)的一个Python模块。它以urlopen函数的形式提供了非常简单的接口。
+#能够使用各种不同的协议来获取网址。它还提供一个稍微复杂的接口用于处理常见的情况：
+#如基本身份验证、cookies、proxies(代理)等。这些是由handlers和openers对象提供
+#获取URLs
+#简单的使用urllib2如下：
+#    import urllib2
+#    response = urllib2.urlopen('http://python.org')
+#    html = response.read()
+#    print html
+#可以看到请求的网页已经被打印出来了。使用urllib2就是如此简单。
+#(可使用'ftp:'、'file'代替'http:')
+#HTTP是基于请求和响应---客户端发出请求和服务器端发送响应。Urllib2 对应Request对象表示你做出HTTP请求，最简单的形式，创建一个指定要获取的网址的Request对象。这个Request对象调用urlopen，返回URL请求的Response对象。Response对象是一个类似于文件对象，你可以在Response中使用 .read()。
+#    import urllib2
+#    req = urllib2.Request('http://python.org')
+#    response = urllib2.urlopen(req)
+#    the_page = response.read()
+#    print the_page
+#urlib2可以使用相同Request接口来处理所有URL方案，例如，你可以创建一个FTP请求：
+#    req = urllib2.Request('ftp://example.com/')
+#在HTTP协议中，Request对象有两个额外的事情可以做，第一，你可以通过将数据发送到服务器；
+#第二，你可以通过数据的额外的信息(metadata)或请求到服务器本身，这个信息是发送HTTP'headers'。
+#https://www.cnblogs.com/billyzh/p/5819957.html
+
   with open(path, 'wb') as w:
     w.write(jacc.read())
-
+#不到什么意思 可能是读写？
   subprocess.check_call(["tar", "xzf", path],
                         cwd=scratch_dir)
-
+#上面有
   shutil.move(os.path.join(scratch_dir, "japi-compliance-checker-1.8"),
               os.path.join(acc_dir))
-
+#shutil.move( src, dst)  #移动文件或重命名
 
 def find_jars(path):
-  """ Return a list of jars within 'path' to be checked for compatibility. """
+  """ Return a list of jars within 'path' to be checked for compatibility. """ 
+  #返回“路径”内的JAR列表，以检查兼容性。
   all_jars = set(check_output(["find", path, "-name", "*.jar"]).splitlines())
+  #
+  #Python splitlines()方法
+#Python splitlines() 按照行('\r', '\r\n', \n')分隔，
+#返回一个包含各行作为元素的列表，如果参数 keepends 为 False，不包含换行符，如果为 True，则保留换行符。
+#语法
+#splitlines()方法语法：
+#str.splitlines([keepends])
+#参数
+#keepends -- 在输出结果里是否保留换行符('\r', '\r\n', \n')，默认为 False，不包含换行符，如果为 True，则保留换行符。
+#返回值
+#返回一个包含各行作为元素的列表。
+#实例
+#以下实例展示了splitlines()函数的使用方法：
+#实例(Python 2.0+)
+#!/usr/bin/python
+#str1 = 'ab c\n\nde fg\rkl\r\n'
+#print str1.splitlines();
+#str2 = 'ab c\n\nde fg\rkl\r\n'
+#print str2.splitlines(True)
+#以上实例输出结果如下：
+#['ab c', '', 'de fg', 'kl']
+#['ab c\n', '\n', 'de fg\r', 'kl\r\n']
+#http://www.runoob.com/python/att-string-splitlines.html
 
   return [j for j in all_jars if (
       "-tests" not in j and
@@ -347,21 +405,25 @@ def find_jars(path):
       "-with-dependencies" not in j)]
 
 def write_xml_file(path, version, jars):
+#写xml文件 路径 版本 ，jars
   """Write the XML manifest file for JACC."""
+  #为JACC编写XML清单文件。
   with open(path, "wt") as f:
     f.write("<version>" + version + "</version>\n")
     f.write("<archives>")
     for j in jars:
       f.write(j + "\n")
     f.write("</archives>")
-
+#archives -存档
 def run_java_acc(src_name, src_jars, dst_name, dst_jars, annotations):
+# annotations  注解
   """ Run the compliance checker to compare 'src' and 'dst'. """
+  #运行符合性检查器比较“SRC”和“DST”
   logging.info("Will check compatibility between original jars:\n\t%s\n" +
                "and new jars:\n\t%s",
                "\n\t".join(src_jars),
                "\n\t".join(dst_jars))
-
+#输出 将检查原始点之间的兼容性
   java_acc_path = os.path.join(get_java_acc_dir(), "japi-compliance-checker.pl")
 
   src_xml_path = os.path.join(get_scratch_dir(), "src.xml")
@@ -370,13 +432,13 @@ def run_java_acc(src_name, src_jars, dst_name, dst_jars, annotations):
   write_xml_file(dst_xml_path, dst_name, dst_jars)
 
   out_path = os.path.join(get_scratch_dir(), "report.html")
-
+#各种拼接 上面有解释
   args = ["perl", java_acc_path,
           "-l", get_repo_name(),
           "-d1", src_xml_path,
           "-d2", dst_xml_path,
           "-report-path", out_path]
-
+#这代码先解释到这 等我学py再解释下，那时能更靠谱点
   if annotations is not None:
     annotations_path = os.path.join(get_scratch_dir(), "annotations.txt")
     with file(annotations_path, "w") as f:
